@@ -1,2 +1,7 @@
 ---
 # tasks file for roles/stack_install
+- name: "Install required packages for Wordpress stack"
+  ansible.builtin.apt:
+    name: "{{ stack_packages + extra_packages }}"
+    state: present
+    update-cache: true
