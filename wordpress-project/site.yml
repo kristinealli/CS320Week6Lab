@@ -1,0 +1,16 @@
+---
+
+- name: "Install and configure Wordpress and supporting software"
+  hosts: "wordpress_servers"
+  gather_facts: true
+  become: true
+  become_method: "ansible.builtin.sudo"
+
+  vars_files:
+    - "group_vars/common.yml"
+
+  roles: 
+    - "stack_install"
+    - "stack_config"
+    - "wordpress"
+    
