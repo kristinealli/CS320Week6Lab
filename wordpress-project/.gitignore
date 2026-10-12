@@ -1,0 +1,6 @@
+*.retry
+*.log
+.vault_pass
+.env
+group_vars/vault.yml
+/wordpress-project/group_vars/vault.yml

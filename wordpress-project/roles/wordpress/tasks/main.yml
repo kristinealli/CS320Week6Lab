@@ -1,2 +1,140 @@
 ---
 # tasks file for roles/wordpress
+- name: "Download WP CLI"
+  ansible.builtin.get_url:
+    url: "{{ wp_cli.download }}"
+    dest:  "{{ wp_cli.path }}"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+
+- name: "Create Wordpress database"
+  community.mysql.mysql_db:
+    name: "{{ wp_database.name }}"
+    state: present
+    login_unix_socket: "/var/lib/mysql/mysql.sock"
+
+- name: "Create Wordpress database user"
+  community.mysql.mysql_user:
+    name: "{{ wp_database.username }}"
+    password: "{{ wp_database.password }}"
+    host: "{{ wp_database.host }}"
+    priv: "{{ wp_database.name }}.*:ALL"
+    state: present
+    login_unix_socket: "/var/lib/mysql/mysql.sock"
+  no_log: true
+
+- name: "Check whether WordPress files exist"
+  ansible.builtin.stat:
+    path: "{{wordpress_system.home}}/wp-settings.php"
+  register: wp_downloaded
+
+- name: "Download WordPress core"
+  ansible.builtin.command:
+    cmd: "{{ wp_cli.path}} core download"
+    chdir: "{{ wordpress_system.home }}"
+    creates: "{{wordpress_system.home}}/wp-settings.php"
+  become_user: "{{ wordpress_system.user }}"
+
+- name: "Generate WordPress configuration"
+  ansible.builtin.command:
+    argv:
+      - "{{ wp_cli.path }}"
+      - "core"
+      - "config"
+      - "--dbhost={{ wp_database.host }}"
+      - "--dbname={{ wp_database.name }}"
+      - "--dbuser={{ wp_database.username }}"
+      - "--path={{ wordpress_system.home }}"
+      - "--prompt=dbpass"
+    chdir: "{{ wordpress_system.home }}"
+    stdin: "{{ wp_database.password }}"
+    stdin_add_newline: true
+    creates: "{{wordpress_system.home}}/wp-config.php"
+  become: true
+  become_user: "{{ wordpress_system.user }}"
+  no_log: true
+
+- name: "Restrict WordPress configuration file permissions"
+  ansible.builtin.file:
+    path: "{{ wordpress_system.home }}/wp-config.php"
+    owner: "{{ wordpress_system.user }}"
+    group: "{{ wordpress_system.group }}"
+    mode: "0600"
+  register: wp_config_permissions
+
+- name: "Verify WordPress configuration file permissions"
+  ansible.builtin.assert:
+    that:
+      - wp_config_permissions.mode == "0600"
+    fail_msg: "wp-config.php must have mode 0600 because it contains database credentials."
+
+- name: "Check Wordpress installation status"
+  ansible.builtin.command:
+    argv:
+      - "{{ wp_cli.path }}"
+      - "core"
+      - "is-installed"
+    chdir: "{{ wordpress_system.home }}"
+  become_user: "{{ wordpress_system.user }}"
+  register: wp_installed_status
+  changed_when: false
+  failed_when: false
+
+- name: "Install WordPress"
+  ansible.builtin.command:
+    argv:
+      - "{{ wp_cli.path }}"
+      - "core"
+      - "install"
+      - "--url={{ wordpress.domain }}"
+      - "--title={{ wordpress.title }}"
+      - "--admin_user={{ wordpress.admin_user }}"
+      - "--admin_email={{ wordpress.admin_email }}"
+      - "--path={{ wordpress_system.home }}"
+      - "--prompt=admin_password"
+    chdir: "{{ wordpress_system.home }}"
+    stdin: "{{ wordpress.admin_password }}"
+    stdin_add_newline: true
+  become_user: "{{ wordpress_system.user }}"
+  when: wp_installed_status.rc != 0
+  no_log: true
+
+- name: "List installed WordPress plugins"
+  ansible.builtin.command:
+    argv:
+      - "{{ wp_cli.path }}"
+      - "plugin"
+      - "list"
+      - "--format=json"
+    chdir: "{{ wordpress_system.home }}"
+  become_user: "{{ wordpress_system.user }}"
+  register: wp_plugin_list
+  changed_when: false
+
+- name: "Install and activate missing WordPress plugins"
+  ansible.builtin.command:
+    argv:
+      - "{{ wp_cli.path }}"
+      - "plugin"
+      - "install"
+      - "{{ item.name }}"
+      - "--activate"
+    chdir: "{{ wordpress_system.home }}"
+  become_user: "{{ wordpress_system.user }}"
+  loop: "{{ wordpress_plugins }}"
+  when: item.name not in (wp_plugin_list.stdout | from_json | map(attribute='name') | list)
+
+- name: "Activate installed WordPress plugins"
+  ansible.builtin.command:
+    argv:
+      - "{{ wp_cli.path }}"
+      - "plugin"
+      - "activate"
+      - "{{ item.name }}"
+    chdir: "{{ wordpress_system.home }}"
+  become_user: "{{ wordpress_system.user }}"
+  loop: "{{ wordpress_plugins }}"
+  when:
+    - item.name in (wp_plugin_list.stdout | from_json | map(attribute='name') | list)
+    - (wp_plugin_list.stdout | from_json | selectattr('name', 'equalto', item.name) | map(attribute='status') | first) != "active"

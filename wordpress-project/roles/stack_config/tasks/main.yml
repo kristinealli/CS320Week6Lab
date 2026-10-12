@@ -74,6 +74,9 @@
     state: "started"
     enabled: true
 
+- name: "Apply pending service configuration changes"
+  ansible.builtin.meta: flush_handlers
+
 - name: "Validate the NGINX configuration"
   ansible.builtin.command: 
     cmd: "nginx -t"

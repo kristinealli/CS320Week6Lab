@@ -7,22 +7,23 @@ php_ini_path: "/etc/php.ini"
 nginx_user: "nginx"
 nginx_service: "nginx"
 
-wordpress: 
+wordpress:
   domain: "10.2.37.105"
   title: "Wordpress Installed with Ansible"
   admin_user: "wpadmin"
-  admin_email: "admin@example.com"
+  admin_email: "{{ vault_email }}"
+  admin_password: "{{ vault_wp_admin_password }}"
 
 wp_database:
   name: "wordpress"
-  user: "wordpress"
+  username: "wordpress"
   host: "localhost"
+  password: "{{ vault_wp_db_password }}"
 
 wp_cli:
-  download_url: "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
+  download: "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
   path: "/usr/local/bin/wp"
 
 wordpress_plugins:
   - name: "akismet"
   - name: "wp-super-cache"
-

@@ -8,8 +8,9 @@
 
   vars_files:
     - "group_vars/common.yml"
+    - "group_vars/vault.yml"
 
-  roles: 
+  roles:
     - role: "stack_install"
       tags: "stack_install"
 
