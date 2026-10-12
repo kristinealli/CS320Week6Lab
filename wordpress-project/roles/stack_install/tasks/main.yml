@@ -1,26 +1,8 @@
 ---
 # tasks file for roles/stack_install
-- name: "Update apt cache and upgrade packages"
-  ansible.builtin.apt:
-    name: "*"
-    state: "latest"
+- name: "Install Wordpress stack packages"
+  ansible.builtin.dnf:
+    name: "{{ system_packages + extra_packages + stack_packages }}"
+    state: present
     update_cache: true
     
-- name: "Add the apt keys from a URL"
-  ansible.builtin.apt_key:
-    url: "{{ item }}"
-    state: present
-  with_items: "{{ repo_keys_url }}"
-
-- name: "Install the repo packages"
-  ansible.builtin.apt_repository:
-    repo: "{{ item }}"
-    state: present
-    update_cache: true
-  with_items: "{{ repo_packages }}"
-
-- name: "Install cache and install packages for Wordpress stack"
-  ansible.builtin.apt:
-    state: present
-    update_cache: true
-    pkg: "{{ system_packages + extra_packages + stack_packages }}"

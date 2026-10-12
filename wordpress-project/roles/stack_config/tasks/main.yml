@@ -1,2 +1,82 @@
 ---
 # tasks file for roles/stack_config
+- name: "Create Wordpress group"
+  ansible.builtin.group:
+    name: "{{ wordpress_system.group }}"
+    state: present
+
+- name: "Create Wordpress system user"
+  ansible.builtin.user:
+    name: "{{ wordpress_system.user }}"
+    group: "{{ wordpress_system.group }}" 
+    comment: "{{ wordpress_system.comment }}"
+    home: "{{ wordpress_system.home }}"
+    state: "{{ wordpress_system.state }}"
+    system: true
+    create_home: true
+    shell: "/usr/sbin/nologin"
+
+- name: "Create Wordpress home directory"
+  ansible.builtin.file:
+    path: "{{ wordpress_system.home }}"
+    state: directory
+    owner: "{{ wordpress_system.user }}"
+    group: "{{ wordpress_system.group }}"
+    mode: "0755"
+
+- name: "Deploy the NGINX site configuration"
+  ansible.builtin.template:
+    src: "wordpress.conf.j2"
+    dest: "/etc/nginx/conf.d/wordpress.conf"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: "Restart nginx"
+
+- name: "Configure the PHP-FPM pool"
+  ansible.builtin.template:
+    src: "wordpress-pool.conf.j2"
+    dest: "{{ php_fpm_pool_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: "Restart PHP-FPM"
+
+- name: "Configure PHP settings"
+  ansible.builtin.lineinfile: 
+    path: "{{ php_ini_path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop: 
+    - regexp: '^memory_limit\s*='
+      line: 'memory_limit = 256M'
+    - regexp: '^upload_max_filesize\s*='
+      line: 'upload_max_filesize = 64M'
+    - regexp: '^post_max_size\s*='
+      line: 'post_max_size = 64M'
+  notify: "Restart PHP-FPM"
+
+- name: "Start and enable MariaDB"
+  ansible.builtin.service:
+    name: "mariadb"
+    state: "started"
+    enabled: true
+
+- name: "Start and enable PHP-FPM"
+  ansible.builtin.service:
+    name: "{{ php_fpm_service }}"
+    state: "started"
+    enabled: true
+
+- name: "Start and enable NGINX"
+  ansible.builtin.service:
+    name: "nginx"
+    state: "started"
+    enabled: true
+
+- name: "Validate the NGINX configuration"
+  ansible.builtin.command: 
+    cmd: "nginx -t"
+  changed_when: false
+
+

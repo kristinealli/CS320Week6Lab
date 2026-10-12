@@ -1,0 +1,28 @@
+---
+php_fpm_service: "php-fpm"
+php_fpm_pool_path: "/etc/php-fpm.d/wordpress.conf"
+php_fpm_socket: "/run/php-fpm/wordpress.sock"
+php_ini_path: "/etc/php.ini"
+
+nginx_user: "nginx"
+nginx_service: "nginx"
+
+wordpress: 
+  domain: "10.2.37.105"
+  title: "Wordpress Installed with Ansible"
+  admin_user: "wpadmin"
+  admin_email: "admin@example.com"
+
+wp_database:
+  name: "wordpress"
+  user: "wordpress"
+  host: "localhost"
+
+wp_cli:
+  download_url: "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
+  path: "/usr/local/bin/wp"
+
+wordpress_plugins:
+  - name: "akismet"
+  - name: "wp-super-cache"
+

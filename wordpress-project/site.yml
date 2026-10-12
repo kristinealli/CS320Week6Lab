@@ -10,7 +10,11 @@
     - "group_vars/common.yml"
 
   roles: 
-    - "stack_install"
-    - "stack_config"
-    - "wordpress"
-    
+    - role: "stack_install"
+      tags: "stack_install"
+
+    - role: "stack_config"
+      tags: "stack_config"
+
+    - role: "wordpress"
+      tags: "wordpress"
